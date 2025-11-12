@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mastra RAG Chatbot</title>
+  <!-- Marked.js for Markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+  <!-- Highlight.js for code syntax highlighting -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+      padding: 1rem 2rem;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      flex-shrink: 0;
+    }
+
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .header p {
+      color: #666;
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+    }
+
+    .upload-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .upload-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .upload-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .container {
+      flex: 1;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .chat-area {
+      flex: 1;
+      background: white;
+      border-radius: 1rem;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+      padding: 2rem;
+      overflow-y: auto;
+      overflow-x: hidden;
+      margin-bottom: 1rem;
+      min-height: 0;
+      /* Smooth scrolling */
+      scroll-behavior: smooth;
+    }
+
+    /* Custom scrollbar styling */
+    .chat-area::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .chat-area::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+
+    .chat-area::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 10px;
+    }
+
+    .chat-area::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100%;
+      text-align: center;
+      color: #666;
+      padding: 2rem;
+    }
+
+    .empty-state-icon {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+
+    .empty-state-icon svg {
+      width: 40px;
+      height: 40px;
+      color: white;
+    }
+
+    .message {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .message.user {
+      flex-direction: row-reverse;
+    }
+
+    .message-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .message.user .message-avatar {
+      background: #e5e7eb;
+    }
+
+    .message.assistant .message-avatar {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .message-content {
+      max-width: 70%;
+      padding: 1rem 1.25rem;
+      border-radius: 1rem;
+      word-wrap: break-word;
+    }
+
+    .message.user .message-content {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .message.assistant .message-content {
+      background: #f3f4f6;
+      color: #1f2937;
+    }
+
+    .message-role {
+      font-size: 0.75rem;
+      opacity: 0.7;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+
+    .input-area {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(0, 0, 0, 0.1);
+      padding: 1.5rem 2rem;
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+      flex-shrink: 0;
+    }
+
+    .input-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      gap: 1rem;
+      align-items: flex-end;
+    }
+
+    .input-wrapper {
+      flex: 1;
+      position: relative;
+    }
+
+    .input-wrapper input {
+      width: 100%;
+      padding: 1rem 1.25rem;
+      border: 2px solid #e5e7eb;
+      border-radius: 0.75rem;
+      font-size: 1rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .input-wrapper input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .send-btn {
+      padding: 1rem 2rem;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .send-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .send-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .toast {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      padding: 1rem 1.5rem;
+      border-radius: 0.5rem;
+      color: white;
+      font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 1000;
+      animation: slideIn 0.3s ease-out;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    .toast.success {
+      background: #10b981;
+    }
+
+    .toast.error {
+      background: #ef4444;
+    }
+
+    .spinner {
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .markdown-content {
+      line-height: 1.7;
+      color: inherit;
+    }
+
+    .message.user .markdown-content {
+      color: white;
+    }
+
+    .message.assistant .markdown-content {
+      color: #1f2937;
+    }
+
+    .markdown-content h1, 
+    .markdown-content h2, 
+    .markdown-content h3,
+    .markdown-content h4,
+    .markdown-content h5,
+    .markdown-content h6 {
+      margin-top: 1.25rem;
+      margin-bottom: 0.75rem;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    .markdown-content h1 {
+      font-size: 1.75rem;
+      border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+      padding-bottom: 0.5rem;
+    }
+
+    .markdown-content h2 {
+      font-size: 1.5rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+      padding-bottom: 0.4rem;
+    }
+
+    .markdown-content h3 {
+      font-size: 1.25rem;
+    }
+
+    .markdown-content p {
+      margin-bottom: 1rem;
+    }
+
+    .markdown-content ul, 
+    .markdown-content ol {
+      margin-left: 1.5rem;
+      margin-bottom: 1rem;
+      padding-left: 0.5rem;
+    }
+
+    .markdown-content li {
+      margin-bottom: 0.5rem;
+    }
+
+    .markdown-content code {
+      background: rgba(0, 0, 0, 0.1);
+      padding: 0.2rem 0.4rem;
+      border-radius: 0.25rem;
+      font-size: 0.9em;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    }
+
+    .message.user .markdown-content code {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .markdown-content pre {
+      background: #f6f8fa;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      overflow-x: auto;
+      margin-bottom: 1rem;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .message.user .markdown-content pre {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .markdown-content pre code {
+      background: none;
+      padding: 0;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+
+    .markdown-content blockquote {
+      border-left: 4px solid #667eea;
+      padding-left: 1rem;
+      margin-left: 0;
+      margin-bottom: 1rem;
+      color: #666;
+      font-style: italic;
+    }
+
+    .message.user .markdown-content blockquote {
+      border-left-color: rgba(255, 255, 255, 0.5);
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .markdown-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1rem;
+    }
+
+    .markdown-content table th,
+    .markdown-content table td {
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      padding: 0.5rem;
+      text-align: left;
+    }
+
+    .markdown-content table th {
+      background: rgba(0, 0, 0, 0.05);
+      font-weight: 600;
+    }
+
+    .message.user .markdown-content table th {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .markdown-content img {
+      max-width: 100%;
+      border-radius: 0.5rem;
+      margin: 1rem 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .markdown-content a {
+      color: #667eea;
+      text-decoration: underline;
+    }
+
+    .message.user .markdown-content a {
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .markdown-content hr {
+      border: none;
+      border-top: 1px solid rgba(0, 0, 0, 0.1);
+      margin: 1.5rem 0;
+    }
+
+    .markdown-content strong {
+      font-weight: 600;
+    }
+
+    .markdown-content em {
+      font-style: italic;
+    }
+
+    /* Custom Confirm Dialog */
+    .confirm-dialog {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
+    }
+
+    .confirm-dialog.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .confirm-dialog-content {
+      background: white;
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      max-width: 400px;
+      width: 90%;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      transform: scale(0.95);
+      transition: transform 0.3s;
+    }
+
+    .confirm-dialog.show .confirm-dialog-content {
+      transform: scale(1);
+    }
+
+    .confirm-dialog-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+      color: #1f2937;
+    }
+
+    .confirm-dialog-message {
+      color: #6b7280;
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+
+    .confirm-dialog-actions {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: flex-end;
+    }
+
+    .confirm-dialog-btn {
+      padding: 0.625rem 1.25rem;
+      border-radius: 0.5rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      font-size: 0.875rem;
+    }
+
+    .confirm-dialog-btn-cancel {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .confirm-dialog-btn-cancel:hover {
+      background: #e5e7eb;
+    }
+
+    .confirm-dialog-btn-confirm {
+      background: #ef4444;
+      color: white;
+    }
+
+    .confirm-dialog-btn-confirm:hover {
+      background: #dc2626;
+    }
+
+    /* Sidebar styles */
+    .sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      width: 280px;
+      height: 100vh;
+      background: #202123;
+      color: #ececf1;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+      z-index: 1000;
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
+    }
+
+    .sidebar.open {
+      transform: translateX(0);
+    }
+
+    .sidebar-header {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .sidebar-header h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .sidebar-close-btn {
+      background: none;
+      border: none;
+      color: #ececf1;
+      cursor: pointer;
+      padding: 0.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.25rem;
+      transition: background 0.2s;
+    }
+
+    .sidebar-close-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .new-chat-btn {
+      width: calc(100% - 2rem);
+      margin: 1rem;
+      padding: 0.75rem;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #ececf1;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: background 0.2s;
+    }
+
+    .new-chat-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .sidebar-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.5rem;
+    }
+
+    .sidebar-content::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .sidebar-content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .sidebar-content::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+    }
+
+    .conversation-item {
+      padding: 0.75rem;
+      margin-bottom: 0.25rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: background 0.2s;
+      position: relative;
+    }
+
+    .conversation-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .conversation-item.active {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .conversation-title {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 0.875rem;
+      padding-right: 0.5rem;
+    }
+
+    .conversation-actions {
+      display: flex;
+      gap: 0.25rem;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .conversation-item:hover .conversation-actions {
+      opacity: 1;
+    }
+
+    .conversation-action-btn {
+      background: none;
+      border: none;
+      color: #ececf1;
+      cursor: pointer;
+      padding: 0.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 0.25rem;
+      transition: background 0.2s;
+    }
+
+    .conversation-action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .sidebar-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s;
+    }
+
+    .sidebar-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .sidebar-toggle-btn {
+      background: rgba(255, 255, 255, 0.95);
+      border: none;
+      padding: 0.5rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 1rem;
+      transition: background 0.2s;
+    }
+
+    .sidebar-toggle-btn:hover {
+      background: rgba(255, 255, 255, 0.8);
+    }
+
+    @media (min-width: 768px) {
+      .sidebar {
+        position: fixed;
+        transform: translateX(-100%);
+        height: 100vh;
+      }
+      
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      
+      .main-content {
+        flex: 1;
+        transition: margin-left 0.3s ease;
+        margin-left: 0;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        width: 100%;
+      }
+
+      body.sidebar-open .main-content {
+        margin-left: 280px;
+      }
+
+      .input-area {
+        position: relative;
+        bottom: 0;
+        width: 100%;
+      }
+
+      .sidebar-overlay {
+        display: none;
+      }
+
+      .sidebar-toggle-btn {
+        display: flex;
+      }
+
+      body {
+        display: flex;
+        flex-direction: row;
+        height: 100vh;
+        overflow: hidden;
+      }
+    }
+
+    @media (max-width: 767px) {
+      .sidebar {
+        transform: translateX(-100%);
+      }
+      
+      .sidebar.open {
+        transform: translateX(0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar Overlay -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- Custom Confirm Dialog -->
+  <div class="confirm-dialog" id="confirmDialog">
+    <div class="confirm-dialog-content" onclick="event.stopPropagation()">
+      <div class="confirm-dialog-title" id="confirmDialogTitle">确认删除</div>
+      <div class="confirm-dialog-message" id="confirmDialogMessage">确定要删除这个对话吗？此操作无法撤销。</div>
+      <div class="confirm-dialog-actions">
+        <button class="confirm-dialog-btn confirm-dialog-btn-cancel" id="confirmDialogCancel">取消</button>
+        <button class="confirm-dialog-btn confirm-dialog-btn-confirm" id="confirmDialogConfirm">删除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <h2>对话记录</h2>
+      <button class="sidebar-close-btn" id="sidebarCloseBtn" title="关闭侧边栏">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+        </svg>
+      </button>
+    </div>
+    <button class="new-chat-btn" id="newChatBtn">
+      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+      </svg>
+      <span>新对话</span>
+    </button>
+    <div class="sidebar-content" id="sidebarContent">
+      <!-- Conversation items will be rendered here -->
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content" style="display: flex; flex-direction: column; height: 100vh;">
+  <div class="header">
+    <div class="header-content">
+      <div style="display: flex; align-items: center;">
+        <button class="sidebar-toggle-btn" id="sidebarToggleBtn" title="打开侧边栏">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+          </svg>
+        </button>
+        <div>
+          <h1>Mastra RAG Chatbot</h1>
+          <p>智能文档问答助手</p>
+        </div>
+      </div>
+      <label>
+        <input type="file" id="fileInput" accept=".txt,.md,.pdf,.docx,.doc,image/*" style="display: none;">
+        <button type="button" class="upload-btn" id="uploadBtn" title="点击选择文件，选择后会自动上传">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+          </svg>
+          <span>上传文件</span>
+        </button>
+      </label>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="chat-area" id="chatArea">
+      <div class="empty-state">
+        <div class="empty-state-icon">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+          </svg>
+        </div>
+        <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem; color: #1f2937;">开始对话</h2>
+        <p>上传文档后，您可以向我提问关于文档内容的问题</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <div class="input-container">
+      <div class="input-wrapper">
+        <input 
+          type="text" 
+          id="queryInput" 
+          placeholder="输入您的问题..."
+          autocomplete="off"
+        >
+      </div>
+      <button class="send-btn" id="sendBtn">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+        </svg>
+        <span>发送</span>
+      </button>
+    </div>
+  </div>
+  </div>
+
+  <script>
+    const chatArea = document.getElementById('chatArea');
+    const queryInput = document.getElementById('queryInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const fileInput = document.getElementById('fileInput');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+    const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
+    const newChatBtn = document.getElementById('newChatBtn');
+    const sidebarContent = document.getElementById('sidebarContent');
+    
+    let messages = [];
+    let isLoading = false;
+    let streamingMessageIndex = -1; // Track which message is currently streaming
+    let renderTimeout = null; // Throttle rendering
+    let currentConversationId = null;
+    let conversations = [];
+
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerHTML = `
+        <span>${message}</span>
+        <button onclick="this.parentElement.remove()" style="background: none; border: none; color: white; cursor: pointer; font-size: 1.2rem; line-height: 1;">×</button>
+      `;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    // Conversation management
+    function generateConversationId() {
+      return 'conv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    function getConversationTitle(messages) {
+      if (messages.length === 0) return '新对话';
+      const firstUserMessage = messages.find(m => m.role === 'user');
+      if (firstUserMessage) {
+        const title = firstUserMessage.content.substring(0, 30);
+        return title.length < firstUserMessage.content.length ? title + '...' : title;
+      }
+      return '新对话';
+    }
+
+    function saveConversations() {
+      localStorage.setItem('mastra_conversations', JSON.stringify(conversations));
+    }
+
+    function loadConversations() {
+      const saved = localStorage.getItem('mastra_conversations');
+      if (saved) {
+        try {
+          conversations = JSON.parse(saved);
+        } catch (e) {
+          console.error('Failed to load conversations:', e);
+          conversations = [];
+        }
+      }
+      renderConversations();
+    }
+
+    function saveCurrentConversation() {
+      if (!currentConversationId) return;
+      
+      const conversation = conversations.find(c => c.id === currentConversationId);
+      const title = getConversationTitle(messages);
+      
+      if (conversation) {
+        conversation.messages = messages;
+        conversation.title = title;
+        conversation.updatedAt = Date.now();
+      } else {
+        conversations.unshift({
+          id: currentConversationId,
+          title: title,
+          messages: messages,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        });
+      }
+      
+      saveConversations();
+      renderConversations();
+    }
+
+    function createNewConversation() {
+      saveCurrentConversation();
+      currentConversationId = generateConversationId();
+      messages = [];
+      renderMessages();
+      // Close sidebar on mobile after creating new conversation
+      if (window.innerWidth < 768) {
+        closeSidebar();
+      }
+    }
+
+    function loadConversation(conversationId) {
+      saveCurrentConversation();
+      const conversation = conversations.find(c => c.id === conversationId);
+      if (conversation) {
+        currentConversationId = conversationId;
+        messages = conversation.messages || [];
+        renderMessages();
+        // Close sidebar on mobile after loading conversation
+        if (window.innerWidth < 768) {
+          closeSidebar();
+        }
+      }
+    }
+
+    // Custom confirm dialog
+    function showConfirmDialog(message, title = '确认删除') {
+      return new Promise((resolve) => {
+        const dialog = document.getElementById('confirmDialog');
+        const dialogTitle = document.getElementById('confirmDialogTitle');
+        const dialogMessage = document.getElementById('confirmDialogMessage');
+        const dialogCancel = document.getElementById('confirmDialogCancel');
+        const dialogConfirm = document.getElementById('confirmDialogConfirm');
+
+        dialogTitle.textContent = title;
+        dialogMessage.textContent = message;
+
+        const cleanup = () => {
+          dialog.classList.remove('show');
+          dialogCancel.onclick = null;
+          dialogConfirm.onclick = null;
+          dialog.onclick = null;
+          document.removeEventListener('keydown', handleEscKey);
+        };
+
+        const handleEscKey = (e) => {
+          if (e.key === 'Escape') {
+            cleanup();
+            resolve(false);
+          }
+        };
+
+        dialogCancel.onclick = () => {
+          cleanup();
+          resolve(false);
+        };
+
+        dialogConfirm.onclick = () => {
+          cleanup();
+          resolve(true);
+        };
+
+        // Click outside to cancel
+        dialog.onclick = (e) => {
+          if (e.target === dialog) {
+            cleanup();
+            resolve(false);
+          }
+        };
+
+        // ESC key to cancel
+        document.addEventListener('keydown', handleEscKey);
+
+        dialog.classList.add('show');
+      });
+    }
+
+    async function deleteConversation(conversationId, e) {
+      e.stopPropagation();
+      const confirmed = await showConfirmDialog('确定要删除这个对话吗？此操作无法撤销。');
+      if (confirmed) {
+        conversations = conversations.filter(c => c.id !== conversationId);
+        if (currentConversationId === conversationId) {
+          createNewConversation();
+        }
+        saveConversations();
+        renderConversations();
+      }
+    }
+
+    function renderConversations() {
+      if (conversations.length === 0) {
+        sidebarContent.innerHTML = '<div style="padding: 1rem; text-align: center; color: #9ca3af; font-size: 0.875rem;">暂无对话记录</div>';
+        return;
+      }
+      
+      sidebarContent.innerHTML = conversations.map(conv => {
+        const isActive = conv.id === currentConversationId;
+        
+        return `
+          <div class="conversation-item ${isActive ? 'active' : ''}" onclick="loadConversation('${conv.id}')">
+            <div class="conversation-title" title="${conv.title}">${conv.title}</div>
+            <div class="conversation-actions">
+              <button class="conversation-action-btn" onclick="event.stopPropagation(); deleteConversation('${conv.id}', event)" title="删除对话">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleSidebar() {
+      const isOpen = sidebar.classList.contains('open');
+      
+      if (isOpen) {
+        // Close sidebar
+        sidebar.classList.remove('open');
+        sidebarOverlay.classList.remove('show');
+        document.body.classList.remove('sidebar-open');
+      } else {
+        // Open sidebar
+        sidebar.classList.add('open');
+        if (window.innerWidth < 768) {
+          // Mobile: show overlay
+          sidebarOverlay.classList.add('show');
+        } else {
+          // Desktop: adjust main content margin
+          document.body.classList.add('sidebar-open');
+        }
+      }
+    }
+
+    function closeSidebar() {
+      sidebar.classList.remove('open');
+      sidebarOverlay.classList.remove('show');
+      document.body.classList.remove('sidebar-open');
+    }
+
+    function addMessage(role, content, imageUrl = null) {
+      messages.push({ role, content, imageUrl });
+      if (role === 'assistant' && !content) {
+        streamingMessageIndex = messages.length - 1;
+      } else {
+        streamingMessageIndex = -1;
+      }
+      renderMessages();
+      chatArea.scrollTop = chatArea.scrollHeight;
+      // Auto-save conversation after adding message
+      if (currentConversationId) {
+        setTimeout(() => saveCurrentConversation(), 1000);
+      }
+    }
+
+    // Optimized function to update only the last streaming message
+    function updateLastMessage(content) {
+      if (streamingMessageIndex >= 0 && messages[streamingMessageIndex]) {
+        messages[streamingMessageIndex].content = content;
+        
+        // Throttle rendering to improve performance
+        if (renderTimeout) {
+          clearTimeout(renderTimeout);
+        }
+        
+        renderTimeout = setTimeout(() => {
+          // Find the last assistant message element (more reliable than nth-child)
+          const messageElements = chatArea.querySelectorAll('.message.assistant');
+          const lastMessageElement = messageElements[messageElements.length - 1];
+          
+          if (lastMessageElement) {
+            const markdownContent = lastMessageElement.querySelector('.markdown-content');
+            if (markdownContent) {
+              // Use a faster, simpler markdown renderer for streaming
+              markdownContent.innerHTML = formatMarkdownStreaming(content);
+              
+              // Highlight code blocks (only new ones)
+              const codeBlocks = markdownContent.querySelectorAll('pre code:not(.hljs)');
+              codeBlocks.forEach((block) => {
+                try {
+                  hljs.highlightElement(block);
+                } catch (e) {
+                  // Ignore highlighting errors during streaming
+                }
+              });
+            }
+          }
+          chatArea.scrollTop = chatArea.scrollHeight;
+          renderTimeout = null;
+        }, 50); // Update every 50ms instead of every chunk
+      }
+    }
+
+    function renderMessages() {
+      if (messages.length === 0) {
+        chatArea.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+              </svg>
+            </div>
+            <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem; color: #1f2937;">开始对话</h2>
+            <p>上传文档后，您可以向我提问关于文档内容的问题</p>
+          </div>
+        `;
+        return;
+      }
+
+      chatArea.innerHTML = messages.map((msg, i) => {
+        const isUser = msg.role === 'user';
+        const imageHtml = msg.imageUrl ? `<img src="${msg.imageUrl}" alt="Uploaded" style="max-width: 100%; border-radius: 0.5rem; margin: 0.5rem 0;">` : '';
+        return `
+          <div class="message ${msg.role}">
+            <div class="message-avatar">
+              ${isUser ? `
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                </svg>
+              ` : `
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                </svg>
+              `}
+            </div>
+            <div class="message-content">
+              <div class="message-role">${isUser ? '您' : 'AI 助手'}</div>
+              ${imageHtml}
+              <div class="markdown-content">${formatMarkdown(msg.content)}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Fast markdown formatter for streaming (incremental updates)
+    function formatMarkdownStreaming(text) {
+      if (!text) return '思考中...';
+      
+      // For streaming, use a simpler, faster approach
+      // Only parse complete markdown structures
+      try {
+        // Configure marked options
+        marked.setOptions({
+          breaks: true,
+          gfm: true,
+          headerIds: false,
+          mangle: false,
+        });
+
+        // Parse markdown to HTML
+        return marked.parse(text);
+      } catch (error) {
+        // Fallback to simple text replacement
+        return text
+          .replace(/\n/g, '<br>')
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+          .replace(/`([^`]+)`/g, '<code>$1</code>');
+      }
+    }
+
+    // Full markdown formatter for final rendering
+    function formatMarkdown(text) {
+      if (!text) return '思考中...';
+      
+      try {
+        // Configure marked options
+        marked.setOptions({
+          breaks: true, // Convert \n to <br>
+          gfm: true, // GitHub Flavored Markdown
+          headerIds: false, // Disable header IDs for cleaner HTML
+          mangle: false, // Don't mangle email addresses
+        });
+
+        // Parse markdown to HTML
+        let html = marked.parse(text);
+        
+        // Highlight code blocks
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+        const codeBlocks = tempDiv.querySelectorAll('pre code');
+        codeBlocks.forEach((block) => {
+          try {
+            hljs.highlightElement(block);
+          } catch (e) {
+            // Ignore highlighting errors
+          }
+        });
+        html = tempDiv.innerHTML;
+        
+        return html;
+      } catch (error) {
+        console.error('Markdown parsing error:', error);
+        // Fallback to simple text replacement
+        return text
+          .replace(/\n/g, '<br>')
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+          .replace(/`(.*?)`/g, '<code>$1</code>');
+      }
+    }
+
+    async function sendQuery() {
+      const query = queryInput.value.trim();
+      if (!query || isLoading) return;
+
+      // Create new conversation if none exists
+      if (!currentConversationId) {
+        currentConversationId = generateConversationId();
+      }
+
+      isLoading = true;
+      sendBtn.disabled = true;
+      queryInput.disabled = true;
+      addMessage('user', query);
+      queryInput.value = '';
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let text = '';
+
+        addMessage('assistant', '');
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          text += decoder.decode(value, { stream: true });
+          // Use optimized update function instead of full re-render
+          updateLastMessage(text);
+        }
+        
+        // Final render with full markdown processing after streaming completes
+        if (streamingMessageIndex >= 0 && messages[streamingMessageIndex]) {
+          messages[streamingMessageIndex].content = text;
+          // Find the last assistant message element
+          const messageElements = chatArea.querySelectorAll('.message.assistant');
+          const lastMessageElement = messageElements[messageElements.length - 1];
+          
+          if (lastMessageElement) {
+            const markdownContent = lastMessageElement.querySelector('.markdown-content');
+            if (markdownContent) {
+              markdownContent.innerHTML = formatMarkdown(text);
+              
+              // Final code highlighting
+              const codeBlocks = markdownContent.querySelectorAll('pre code:not(.hljs)');
+              codeBlocks.forEach((block) => {
+                try {
+                  hljs.highlightElement(block);
+                } catch (e) {
+                  // Ignore errors
+                }
+              });
+            }
+          }
+          streamingMessageIndex = -1;
+          chatArea.scrollTop = chatArea.scrollHeight;
+        }
+        
+        // Save conversation after completion
+        saveCurrentConversation();
+      } catch (error) {
+        console.error('Error:', error);
+        showToast('发送消息失败，请重试', 'error');
+        // Clear any pending render timeout
+        if (renderTimeout) {
+          clearTimeout(renderTimeout);
+          renderTimeout = null;
+        }
+        // Remove the empty assistant message if streaming was interrupted
+        if (streamingMessageIndex >= 0 && messages[streamingMessageIndex] && !messages[streamingMessageIndex].content) {
+          messages.pop();
+        }
+        streamingMessageIndex = -1;
+        renderMessages();
+      } finally {
+        isLoading = false;
+        sendBtn.disabled = false;
+        queryInput.disabled = false;
+      }
+    }
+
+    async function handleUpload(event) {
+      console.log('📤 File upload triggered', event);
+      const file = event.target.files[0];
+      if (!file) {
+        console.warn('⚠️ No file selected');
+        return;
+      }
+
+      console.log('📄 File selected:', file.name, file.type, file.size);
+      const isImage = file.type.startsWith('image/');
+      uploadBtn.disabled = true;
+      uploadBtn.innerHTML = '<div class="spinner"></div><span>处理中...</span>';
+
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const endpoint = isImage ? '/api/image' : '/api/upload';
+        console.log('🌐 Sending request to:', endpoint);
+        
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          body: formData,
+        });
+
+        console.log('📥 Response status:', response.status, response.statusText);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ Response error:', errorText);
+          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log('✅ Response data:', data);
+
+        if (!data.success) {
+          throw new Error(data.error || '上传失败');
+        }
+
+        const imageUrl = isImage ? URL.createObjectURL(file) : null;
+
+        if (isImage) {
+          addMessage('user', `上传了图片：${file.name}`, imageUrl);
+          addMessage('assistant', `## 🖼️ 图片分析\n\n${data.description}`);
+          showToast('图片分析完成', 'success');
+          // 上传完成后自动聚焦到输入框，方便用户继续提问
+          setTimeout(() => {
+            queryInput.focus();
+          }, 100);
+        } else {
+          showToast(data.message || `文档已导入数据库（${data.count || 0} 个片段）`, 'success');
+          if (data.summary) {
+            addMessage('assistant', `## 📄 文档总结\n\n${data.summary}`);
+          }
+          // 上传完成后自动聚焦到输入框，方便用户继续提问
+          setTimeout(() => {
+            queryInput.focus();
+          }, 100);
+        }
+      } catch (error) {
+        console.error('Upload error:', error);
+        showToast(error.message || '上传失败，请重试', 'error');
+      } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = `
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+          </svg>
+          <span>上传文件</span>
+        `;
+        fileInput.value = '';
+      }
+    }
+
+    // 确保文件上传按钮点击时触发文件选择
+    uploadBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      console.log('🖱️ Upload button clicked');
+      fileInput.click();
+    });
+
+    sendBtn.addEventListener('click', sendQuery);
+    queryInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendQuery();
+      }
+    });
+    
+    // 文件选择变化时触发上传
+    fileInput.addEventListener('change', (e) => {
+      console.log('📁 File input changed');
+      handleUpload(e);
+    });
+    
+    // 添加错误处理
+    fileInput.addEventListener('error', (e) => {
+      console.error('❌ File input error:', e);
+      showToast('文件选择出错', 'error');
+    });
+
+    // Sidebar event listeners
+    sidebarToggleBtn.addEventListener('click', toggleSidebar);
+    sidebarCloseBtn.addEventListener('click', closeSidebar);
+    sidebarOverlay.addEventListener('click', closeSidebar);
+    newChatBtn.addEventListener('click', createNewConversation);
+
+    // Make functions available globally for onclick handlers
+    window.loadConversation = loadConversation;
+    window.deleteConversation = deleteConversation;
+
+    // Initialize: Load conversations and create new conversation
+    loadConversations();
+    if (!currentConversationId) {
+      currentConversationId = generateConversationId();
+    }
+
+    // Initialize sidebar state - default to closed on all devices
+    function initSidebarState() {
+      sidebar.classList.remove('open');
+      sidebarOverlay.classList.remove('show');
+      document.body.classList.remove('sidebar-open');
+    }
+
+    // Initialize on load
+    initSidebarState();
+  </script>
+</body>
+</html>
+

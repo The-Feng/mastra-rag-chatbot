@@ -1,0 +1,32 @@
+name = "mastra-agent"
+main = "dist/worker.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# 環境變量（在 Cloudflare Dashboard 中設置）
+# [vars]
+# OPENAI_API_KEY = "your-api-key"
+# POSTGRES_URL = "your-postgres-url"
+
+# 如果需要使用 D1 數據庫（可選）
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "mastra-db"
+# database_id = "your-database-id"
+
+# 如果需要使用 R2 存儲（可選）
+# [[r2_buckets]]
+# binding = "FILES"
+# bucket_name = "mastra-files"
+
+# 構建配置
+[build]
+command = "pnpm run build:worker"
+
+# 部署配置
+[env.production]
+name = "mastra-agent"
+
+[env.staging]
+name = "mastra-agent-staging"
+
