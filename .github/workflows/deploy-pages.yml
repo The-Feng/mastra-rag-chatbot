@@ -1,0 +1,59 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'public/**'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy Pages
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate config.js
+        run: |
+          # 从环境变量或 secrets 获取 Workers URL
+          WORKER_URL="${{ secrets.CLOUDFLARE_WORKER_URL }}"
+          if [ -z "$WORKER_URL" ]; then
+            # 如果没有设置，使用默认值（Pages 和 Workers 在同一域名）
+            WORKER_URL=""
+            echo "⚠️ Warning: CLOUDFLARE_WORKER_URL not set, using relative paths"
+          fi
+          
+          # 生成 config.js（使用 Node.js 确保跨平台兼容）
+          node -e "
+            const fs = require('fs');
+            const workerUrl = process.env.WORKER_URL || '';
+            const config = \`// Auto-generated config for Cloudflare Pages
+          // This file is generated during deployment
+          window.API_BASE_URL = '\${workerUrl}';
+          \`;
+            fs.writeFileSync('public/config.js', config);
+            console.log('✅ Generated config.js with API_BASE_URL:', workerUrl || '(empty - using relative paths)');
+          "
+        env:
+          WORKER_URL: ${{ secrets.CLOUDFLARE_WORKER_URL }}
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: mastra-chatbot
+          directory: public
+          # 可选：设置生产分支
+          # production: true
+
