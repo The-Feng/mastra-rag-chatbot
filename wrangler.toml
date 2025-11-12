@@ -1,7 +1,11 @@
 name = "mastra-agent"
 main = "dist/worker.js"
-compatibility_date = "2024-01-01"
+compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
+
+# 構建配置（禁用 Wrangler 的打包，直接使用我们构建好的文件）
+# [build]
+# command = "pnpm run build:worker"
 
 # 環境變量（在 Cloudflare Dashboard 中設置）
 # [vars]
@@ -18,10 +22,6 @@ compatibility_flags = ["nodejs_compat"]
 # [[r2_buckets]]
 # binding = "FILES"
 # bucket_name = "mastra-files"
-
-# 構建配置
-[build]
-command = "pnpm run build:worker"
 
 # 部署配置
 [env.production]

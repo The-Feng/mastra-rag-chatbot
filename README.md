@@ -219,18 +219,20 @@ new-mastra/
 
 #### 設置環境變量
 
-部署後，需要在 Cloudflare Workers 中設置環境變量：
+部署後，需要在 Cloudflare Dashboard 中手動設置環境變量：
 
-```bash
-# 使用 Wrangler CLI
-npx wrangler secret put OPENAI_API_KEY --env production
-npx wrangler secret put POSTGRES_URL --env production
+1. 登錄 [Cloudflare Dashboard](https://dash.cloudflare.com/)
+2. 進入 **Workers & Pages**
+3. 選擇 Worker（`mastra-agent` 或 `mastra-agent-staging`）
+4. 點擊 **Settings** → **Variables**
+5. 在 **Environment Variables** 部分添加：
+   - `OPENAI_API_KEY`: 您的 OpenAI API Key
+   - `POSTGRES_URL`: 您的 PostgreSQL 連接字符串
 
-# 或通過 Cloudflare Dashboard
-# Workers & Pages → 選擇 Worker → Settings → Variables
-```
+**注意**：環境變量需要在部署後手動在 Cloudflare Dashboard 中設置，不會在部署過程中自動設置。
 
 詳細說明請參考：
+- [AUTO_DEPLOY_SETUP.md](./AUTO_DEPLOY_SETUP.md) - 🚀 **自动化部署设置指南（推荐）**
 - [GITHUB_DEPLOY.md](./GITHUB_DEPLOY.md) - GitHub 上傳與部署完整指南
 - [GITHUB_ACTIONS_SETUP.md](./GITHUB_ACTIONS_SETUP.md) - GitHub Actions 詳細設置
 - [CLOUDFLARE_DEPLOY.md](./CLOUDFLARE_DEPLOY.md) - Cloudflare Workers 部署指南

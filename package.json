@@ -10,9 +10,10 @@
     "start": "mastra start",
     "server": "tsx server.ts",
     "server:dev": "tsx watch server.ts",
-    "build:worker": "tsc && esbuild src/worker.ts --bundle --format=esm --outfile=dist/worker.js --platform=neutral --target=es2022 --external:@mastra/* --external:@ai-sdk/* --external:ai --external:openai --external:pg --external:mammoth --external:pdf-parse --external:textract",
-    "deploy:worker": "wrangler deploy",
-    "deploy:worker:staging": "wrangler deploy --env staging",
+    "build:worker": "tsc && esbuild src/worker-minimal.ts --bundle --format=esm --outfile=dist/worker.js --platform=browser --target=es2022 --minify --define:process.env.NODE_ENV='\"production\"' --tree-shaking=true",
+    "build:worker:full": "tsc && esbuild src/worker.ts --bundle --format=esm --outfile=dist/worker.js --platform=neutral --target=es2022 --minify --external:pg --external:mammoth --external:pdf-parse --external:textract --external:crypto --external:events --external:stream --external:stream/web --external:fs --external:fs/promises --external:path --external:os --external:util --external:module --external:node-html-better-parser --external:@opentelemetry/*",
+    "deploy:worker": "wrangler deploy --env production --no-bundle",
+    "deploy:worker:staging": "wrangler deploy --env staging --no-bundle",
     "dev:worker": "wrangler dev",
     "setup:supabase": "node scripts/setup-supabase.js"
   },
@@ -53,6 +54,6 @@
     "mastra": "^0.18.0",
     "tsx": "^4.7.0",
     "typescript": "^5.9.3",
-    "wrangler": "^3.0.0"
+    "wrangler": "^4.47.0"
   }
 }

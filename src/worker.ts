@@ -5,6 +5,12 @@
 
 import { executeChatWorkflow, executeIngestAndSummarize, executeImageAnalysis } from './mastra/workflow-executor.js';
 
+// ExecutionContext 類型定義（Cloudflare Workers）
+interface ExecutionContext {
+  waitUntil(promise: Promise<any>): void;
+  passThroughOnException(): void;
+}
+
 // 處理 CORS
 function handleCORS(request: Request): Response | null {
   if (request.method === 'OPTIONS') {
@@ -36,15 +42,24 @@ function addCORSHeaders(response: Response): Response {
 // 處理靜態文件（HTML）
 async function handleStaticFile(path: string): Promise<Response | null> {
   if (path === '/' || path === '/index.html') {
-    // 在 Workers 中，我們需要將 HTML 內容內嵌或使用外部 URL
-    // 這裡我們返回一個重定向到實際的 HTML 文件
-    // 或者可以將 HTML 內容直接內嵌在這裡
-    const htmlContent = await import('../public/index.html?raw').catch(() => null);
-    if (htmlContent) {
-      return new Response(htmlContent.default || htmlContent, {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' },
-      });
-    }
+    // 在 Workers 中，返回一個簡單的 HTML 響應
+    // 實際的 HTML 文件可以通過其他方式提供（如 Cloudflare Pages）
+    const htmlContent = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mastra RAG Chatbot</title>
+</head>
+<body>
+  <h1>Mastra RAG Chatbot</h1>
+  <p>API 服務正在運行</p>
+  <p>請使用 API 端點：/api/chat, /api/upload, /api/image</p>
+</body>
+</html>`;
+    return new Response(htmlContent, {
+      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+    });
   }
   return null;
 }

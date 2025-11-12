@@ -4,13 +4,9 @@ import { openai } from "@ai-sdk/openai";
 import { getPool } from "./db.js";
 import { ensureVectorDB } from "./db.js";
 import mammoth from "mammoth";
-import { writeFile, unlink, access } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
-import { exec } from "child_process";
-import { promisify } from "util";
 
-const execAsync = promisify(exec);
+// 检测是否在 Cloudflare Workers 环境中
+const isWorkersEnv = typeof (globalThis as any).caches !== 'undefined' && typeof (globalThis as any).Request !== 'undefined';
 
 // Import document to vector database
 export async function ingestText(text: string, source = "upload") {
@@ -91,11 +87,12 @@ export async function ingestFile(buffer: Buffer, fileName: string, mimeType: str
   if (mimeType.includes("pdf") || fileName.endsWith(".pdf")) {
     try {
       // 使用動態導入 pdf-parse（ES modules 兼容）
-      const pdfParse = await import("pdf-parse");
-      const pdfParseDefault = pdfParse.default || pdfParse;
+      const pdfParseModule = await import("pdf-parse");
+      // pdf-parse 可能是 default export 或 named export
+      const pdfParseFn = (pdfParseModule as any).default || (pdfParseModule as any);
       
       // pdf-parse 返回一個 Promise，直接傳入 buffer
-      const pdfData = await pdfParseDefault(buffer);
+      const pdfData = await pdfParseFn(buffer);
       text = pdfData.text || "";
       
       if (!text || text.trim().length === 0) {
@@ -138,8 +135,20 @@ export async function ingestFile(buffer: Buffer, fileName: string, mimeType: str
     mimeType.includes("msword") || 
     fileName.endsWith(".doc")
   ) {
-    // 使用 antiword 直接处理旧的 .doc 格式（Word 97-2003）
+    // .doc 文件处理在 Cloudflare Workers 环境中不支持
+    // 因为 Workers 不支持文件系统和子进程
+    throw new Error(".doc files are not supported in Cloudflare Workers environment. Please convert to .docx format or use a Node.js server.");
+    
+    // 以下代码仅在 Node.js 环境中可用（不在 Workers 中执行）
+    /* Node.js only code - disabled for Workers
     try {
+      const { writeFile, unlink, access } = await import("fs/promises");
+      const { join } = await import("path");
+      const { tmpdir } = await import("os");
+      const { exec } = await import("child_process");
+      const { promisify } = await import("util");
+      const execAsync = promisify(exec);
+      
       console.log("开始处理 .doc 文件...");
       
       // 将 buffer 写入临时文件
@@ -232,6 +241,7 @@ export async function ingestFile(buffer: Buffer, fileName: string, mimeType: str
       } catch (execError: any) {
         // Clean up temporary file
         try {
+          const { unlink } = await import("fs/promises");
           await unlink(tempFilePath);
         } catch {
           // Ignore cleanup errors
@@ -251,6 +261,7 @@ export async function ingestFile(buffer: Buffer, fileName: string, mimeType: str
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
       throw new Error(`.doc file parsing failed: ${errorMsg}`);
     }
+    */
   } else {
     // 纯文本文件
     text = buffer.toString("utf-8");
