@@ -15,6 +15,9 @@ interface ExecutionContext {
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+    
+    // Check if this is staging environment (staging Worker name contains "staging")
+    const isStaging = url.hostname.includes('staging');
 
     // CORS headers
     const corsHeaders = {
@@ -31,7 +34,7 @@ export default {
     try {
       // Health check
       if (url.pathname === '/health' || url.pathname === '/api/health') {
-        return new Response(JSON.stringify({ status: 'ok', version: '1.0.0' }), {
+        return new Response(JSON.stringify({ status: 'ok', version: '1.0.0', environment: isStaging ? 'staging' : 'production' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -77,8 +80,24 @@ export default {
         });
       }
 
-      // Interactive chat page for root path
-      if (url.pathname === '/' || url.pathname === '/index.html') {
+      // For staging environment root path, return API info
+      if (isStaging && (url.pathname === '/' || url.pathname === '/index.html')) {
+        return new Response(JSON.stringify({ 
+          message: 'Mastra AI Chatbot API - Staging Environment',
+          version: '1.0.0',
+          endpoints: {
+            health: '/health or /api/health',
+            chat: '/api/chat (POST)'
+          },
+          note: 'This is a staging environment. Frontend is served via Cloudflare Pages.'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Interactive chat page for root path (only for production, not staging)
+      // Staging environment should only serve API endpoints
+      if (!isStaging && (url.pathname === '/' || url.pathname === '/index.html')) {
         const htmlContent = `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
