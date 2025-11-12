@@ -326,10 +326,10 @@ export default {
       if (role === 'assistant') {
         // Simple markdown-like formatting
         content = content
-          .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
-          .replace(/\\*(.*?)\\*/g, '<em>$1</em>')
-          .replace(/`([^`]+)`/g, '<code>$1</code>')
-          .replace(/\\n/g, '<br>');
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+          .replace(/\`([^\`]+)\`/g, '<code>$1</code>')
+          .replace(/\n/g, '<br>');
         contentDiv.innerHTML = content;
       } else {
         contentDiv.textContent = content;
@@ -388,10 +388,10 @@ export default {
           
           // Update UI with formatted text
           const formatted = fullText
-            .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
-            .replace(/\\*(.*?)\\*/g, '<em>$1</em>')
-            .replace(/`([^`]+)`/g, '<code>$1</code>')
-            .replace(/\\n/g, '<br>');
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\`([^\`]+)\`/g, '<code>$1</code>')
+            .replace(/\n/g, '<br>');
           
           responseDiv.innerHTML = formatted;
           chatContainer.scrollTop = chatContainer.scrollHeight;
