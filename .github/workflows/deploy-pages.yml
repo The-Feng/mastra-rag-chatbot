@@ -52,7 +52,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: mastra-chatbot
+          projectName: mastra-agent
           directory: public
           # 可选：设置生产分支
           # production: true
